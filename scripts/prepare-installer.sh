@@ -1,8 +1,8 @@
 #!/bin/sh
 set -eu
 
-script_dir=$(CDPATH= cd "$(dirname "$0")" && pwd)
-project_root=$(CDPATH= cd "$script_dir/.." && pwd)
+script_dir=$(CDPATH='' cd "$(dirname "$0")" && pwd)
+project_root=$(CDPATH='' cd "$script_dir/.." && pwd)
 asset_dir=${CODEX_SWITCH_RELEASE_ASSET_DIR:-"$project_root/release-assets"}
 repository=${GITHUB_REPOSITORY:?Set GITHUB_REPOSITORY to OWNER/REPO.}
 version=$(cat "$project_root/internal/version/VERSION")
