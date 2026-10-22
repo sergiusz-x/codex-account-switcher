@@ -75,6 +75,7 @@ jobs:
       - name: Test the isolated Codex server with synthetic credentials
         env:
           SWITCHER_REAL_CODEX: "1"
+          SWITCHER_CODEX_BINARY: ${{ runner.temp }}/codex-cli/node_modules/.bin/codex
         run: go test ./internal/switcher -run '^TestRealCodexAccountRoundTrip$' -count=1 -v
 
   package:
