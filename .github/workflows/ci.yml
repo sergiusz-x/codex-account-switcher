@@ -76,7 +76,7 @@ jobs:
         env:
           SWITCHER_REAL_CODEX: "1"
           SWITCHER_CODEX_BINARY: ${{ runner.temp }}/codex-cli/node_modules/.bin/codex
-        run: go test ./internal/switcher -run '^TestRealCodexAccountRoundTrip$' -count=1 -v
+        run: go test ./internal/switcher -run '^TestRealCodex' -count=1 -v
 
   package:
     needs: verify
@@ -158,7 +158,7 @@ jobs:
           "CODEX_HOME=$env:RUNNER_TEMP\codex-switch-ci" >> $env:GITHUB_ENV
       - name: Test the isolated Windows Codex server with synthetic credentials
         shell: pwsh
-        run: go test ./internal/switcher -run '^TestRealCodexAccountRoundTrip$' -count=1 -v
+        run: go test ./internal/switcher -run '^TestRealCodex' -count=1 -v
 
   release:
     needs: [verify, package, windows-verify]
@@ -255,7 +255,7 @@ jobs:
           "CODEX_HOME=$env:RUNNER_TEMP\codex-switch-release-ci" >> $env:GITHUB_ENV
       - name: Test exact release source against real Codex with synthetic credentials
         shell: pwsh
-        run: go test ./internal/switcher -run '^TestRealCodexAccountRoundTrip$' -count=1 -v
+        run: go test ./internal/switcher -run '^TestRealCodex' -count=1 -v
 
   finalize-release:
     needs: [release, windows-release-verify]

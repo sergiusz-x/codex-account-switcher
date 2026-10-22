@@ -33,6 +33,8 @@ The Windows installer verifies the release checksum before installing or
 updating `codex_switch.exe` in `%LOCALAPPDATA%\Programs\CodexSwitch\bin`.
 Add that directory to your per-user `PATH` if you want to run `codex_switch`
 from any terminal. It does not change `PATH` or install Codex CLI.
+Use a normal terminal on Windows: Codex CLI does not support its shared daemon
+in an elevated administrator session.
 
 ### Build from source
 

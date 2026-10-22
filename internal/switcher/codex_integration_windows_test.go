@@ -7,9 +7,17 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"testing"
 
 	"golang.org/x/sys/windows"
 )
+
+func requireCodexDaemonSupport(t *testing.T) {
+	t.Helper()
+	if windows.GetCurrentProcessToken().IsElevated() {
+		t.Skip("Codex requires a non-elevated Windows session for its shared daemon; run this acceptance test from a normal terminal")
+	}
+}
 
 func codexIntegrationACLs(home string) string {
 	current, _ := windows.GetCurrentProcessToken().GetTokenUser()
