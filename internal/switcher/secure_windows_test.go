@@ -63,6 +63,35 @@ func TestWindowsSecretACLsArePrivate(t *testing.T) {
 	}
 }
 
+func TestWindowsAdministrativeOwnerGetsPrivateACL(t *testing.T) {
+	if !windows.GetCurrentProcessToken().IsElevated() {
+		t.Skip("requires an elevated token to assign Administrators ownership")
+	}
+	path := t.TempDir()
+	administrators, err := windows.CreateWellKnownSid(windows.WinBuiltinAdministratorsSid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := windows.SetNamedSecurityInfo(path, windows.SE_FILE_OBJECT, windows.OWNER_SECURITY_INFORMATION, administrators, nil, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := secureDataDir(path); err != nil {
+		t.Fatal(err)
+	}
+	descriptor, err := windows.GetNamedSecurityInfo(path, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal(err)
+	}
+	user, err := windows.GetCurrentProcessToken().GetTokenUser()
+	if err != nil {
+		t.Fatal(err)
+	}
+	sddl := descriptor.String()
+	if !strings.Contains(sddl, "D:P") || !strings.Contains(sddl, "(A;OICI;FA;;;"+user.User.Sid.String()+")") || strings.Count(sddl, "(A;") != 3 {
+		t.Fatalf("administrative owner did not receive a private ACL: %s", sddl)
+	}
+}
+
 func TestWindowsReusedBroadDirectoryGetsProtected(t *testing.T) {
 	store := NewStore(t.TempDir())
 	if err := os.Mkdir(store.root, 0o700); err != nil {

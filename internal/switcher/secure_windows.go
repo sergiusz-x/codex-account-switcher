@@ -135,7 +135,14 @@ func secureHandle(handle windows.Handle, directory bool) error {
 		return fmt.Errorf("read Windows object owner: %w", err)
 	}
 	if owner == nil || !owner.Equals(currentSID) {
-		return fmt.Errorf("refusing to secure a Windows object owned by another principal")
+		// Elevated Windows processes can create objects owned by Administrators.
+		administrators, err := windows.CreateWellKnownSid(windows.WinBuiltinAdministratorsSid)
+		if err != nil {
+			return fmt.Errorf("get Windows administrators SID: %w", err)
+		}
+		if owner == nil || !owner.Equals(administrators) || !windows.GetCurrentProcessToken().IsElevated() {
+			return fmt.Errorf("refusing to secure a Windows object owned by another principal")
+		}
 	}
 	inherit := ""
 	if directory {
