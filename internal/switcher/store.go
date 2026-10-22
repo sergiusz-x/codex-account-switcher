@@ -634,8 +634,8 @@ func (s *Store) ensureDirs() error {
 		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
 			return fmt.Errorf("%s is not a regular directory", path)
 		}
-		if err := os.Chmod(path, 0o700); err != nil {
-			return fmt.Errorf("set data directory permissions: %w", err)
+		if err := secureDataDir(path); err != nil {
+			return fmt.Errorf("secure data directory: %w", err)
 		}
 	}
 	return nil
@@ -752,7 +752,7 @@ func atomicWrite(path string, content []byte, mode os.FileMode) (retErr error) {
 			}
 		}
 	}()
-	if err := tmp.Chmod(mode); err != nil {
+	if err := secureTempFile(tmpPath, tmp, mode); err != nil {
 		return errors.Join(err, tmp.Close())
 	}
 	n, err := tmp.Write(content)
@@ -766,7 +766,7 @@ func atomicWrite(path string, content []byte, mode os.FileMode) (retErr error) {
 	if err != nil || closeErr != nil {
 		return errors.Join(err, closeErr)
 	}
-	if err := os.Rename(tmpPath, path); err != nil {
+	if err := atomicReplace(tmpPath, path); err != nil {
 		return err
 	}
 	return syncDir(dir)

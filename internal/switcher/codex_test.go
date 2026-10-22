@@ -37,7 +37,7 @@ func fakeCodexClient(t *testing.T, home string, state fakeDaemon) codexClient {
 	} else if state.Account == "account-b" {
 		state.Token = "access-b"
 	}
-	directory, err := os.MkdirTemp("/tmp", "cs-ws-")
+	directory, err := os.MkdirTemp("", "cs-ws-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func fakeCodexClient(t *testing.T, home string, state fakeDaemon) codexClient {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return codexClient{home: home, timeout: 2 * time.Second, command: func(ctx context.Context, args ...string) *exec.Cmd {
+	return codexClient{home: home, timeout: 10 * time.Second, command: func(ctx context.Context, args ...string) *exec.Cmd {
 		cmd := exec.CommandContext(ctx, binary, append([]string{"-test.run=^TestCodexProcessHelper$", "--"}, args...)...)
 		cmd.Env = append(os.Environ(), "SWITCHER_CODEX_HELPER=1")
 		return cmd

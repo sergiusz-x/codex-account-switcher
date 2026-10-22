@@ -75,6 +75,7 @@ jobs:
       - name: Test the isolated Codex server with synthetic credentials
         env:
           SWITCHER_REAL_CODEX: "1"
+          SWITCHER_CODEX_BINARY: ${{ runner.temp }}/codex-cli/node_modules/.bin/codex
         run: go test ./internal/switcher -run '^TestRealCodexAccountRoundTrip$' -count=1 -v
 
   package:
@@ -109,15 +110,63 @@ jobs:
           name: ubuntu-amd64-preview-${{ github.sha }}
           path: |
             dist/*.tar.gz
+            dist/*.zip
             dist/checksums.txt
           if-no-files-found: error
           retention-days: 7
 
+  windows-verify:
+    needs: package
+    runs-on: windows-2025
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.release_tag || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: "1.27.3"
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: ubuntu-amd64-preview-${{ github.sha }}
+          path: dist
+      - name: Check formatting, vet, and Windows tests
+        shell: pwsh
+        run: |
+          $files = gofmt -l cmd internal
+          if ($files) { throw "Run gofmt on:`n$($files -join "`n")" }
+          go vet ./...
+          go test -count=1 ./...
+      - name: Test the real Windows installer in Windows PowerShell 5.1
+        shell: powershell
+        run: ./scripts/windows-installer.test.ps1 -PackageDir ./dist
+      - name: Test the real Windows installer in PowerShell 7
+        shell: pwsh
+        run: ./scripts/windows-installer.test.ps1 -PackageDir ./dist
+      - name: Install the supported Codex CLI and verify the npm launcher
+        shell: pwsh
+        run: |
+          npm.cmd install --prefix "$env:RUNNER_TEMP\codex-cli" --no-package-lock --ignore-scripts --no-audit --no-fund @openai/codex@0.163.0
+          "SWITCHER_REAL_CODEX=1" >> $env:GITHUB_ENV
+          "SWITCHER_CODEX_BINARY=$env:RUNNER_TEMP\codex-cli\node_modules\.bin\codex.cmd" >> $env:GITHUB_ENV
+          "CODEX_HOME=$env:RUNNER_TEMP\codex-switch-ci" >> $env:GITHUB_ENV
+      - name: Test the isolated Windows Codex server with synthetic credentials
+        shell: pwsh
+        run: go test ./internal/switcher -run '^TestRealCodexAccountRoundTrip$' -count=1 -v
+
   release:
-    needs: [verify, package]
+    needs: [verify, package, windows-verify]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    outputs:
+      release_tag: ${{ steps.release.outputs.release_tag }}
     permissions:
       contents: write
     steps:
@@ -138,18 +187,92 @@ jobs:
         with:
           version: v2.18.3
           install-only: true
-      - name: Release conventional commits on main
-        if: github.event_name == 'push'
+      - name: Build or recover a draft release
+        id: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run release
-      - name: Recover an existing release
-        if: github.event_name == 'workflow_dispatch'
-        env:
           RELEASE_TAG: ${{ inputs.release_tag }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git merge-base --is-ancestor HEAD origin/main
-          sh scripts/publish-release.sh "${RELEASE_TAG#v}"
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+            git merge-base --is-ancestor HEAD origin/main
+            sh scripts/publish-release.sh "${RELEASE_TAG#v}"
+            release_tag=$RELEASE_TAG
+          else
+            npm run release
+            release_tag=$(git describe --tags --exact-match HEAD 2>/dev/null || true)
+          fi
+          if [[ -n "$release_tag" && ! "$release_tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo 'The release process returned an invalid tag.' >&2
+            exit 1
+          fi
+          echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+
+  windows-release-verify:
+    needs: release
+    if: needs.release.outputs.release_tag != ''
+    runs-on: windows-2025
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ needs.release.outputs.release_tag }}
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: "1.27.3"
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .node-version
+      - name: Download the exact draft release artifacts
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.release.outputs.release_tag }}
+        run: |
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          gh release download $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --dir dist --pattern codex_switch_windows_amd64.zip --pattern checksums.txt --pattern install.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'Could not download the draft release assets.' }
+      - name: Check out exact release source on Windows
+        shell: pwsh
+        run: |
+          go vet ./...
+          go test -count=1 ./...
+      - name: Test the exact draft package installer in both PowerShell versions
+        shell: powershell
+        run: ./scripts/windows-installer.test.ps1 -PackageDir ./dist -InstallerPath ./dist/install.ps1
+      - name: Retest the exact draft package installer in PowerShell 7
+        shell: pwsh
+        run: ./scripts/windows-installer.test.ps1 -PackageDir ./dist -InstallerPath ./dist/install.ps1
+      - name: Install pinned Codex CLI npm package
+        shell: pwsh
+        run: |
+          npm.cmd install --prefix "$env:RUNNER_TEMP\codex-cli" --no-package-lock --ignore-scripts --no-audit --no-fund @openai/codex@0.163.0
+          "SWITCHER_REAL_CODEX=1" >> $env:GITHUB_ENV
+          "SWITCHER_CODEX_BINARY=$env:RUNNER_TEMP\codex-cli\node_modules\.bin\codex.cmd" >> $env:GITHUB_ENV
+          "CODEX_HOME=$env:RUNNER_TEMP\codex-switch-release-ci" >> $env:GITHUB_ENV
+      - name: Test exact release source against real Codex with synthetic credentials
+        shell: pwsh
+        run: go test ./internal/switcher -run '^TestRealCodexAccountRoundTrip$' -count=1 -v
+
+  finalize-release:
+    needs: [release, windows-release-verify]
+    if: needs.release.outputs.release_tag != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ needs.release.outputs.release_tag }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Publish only the verified draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.release.outputs.release_tag }}
+        run: sh scripts/finalize-release.sh "${RELEASE_TAG#v}"

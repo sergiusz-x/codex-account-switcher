@@ -31,4 +31,4 @@ esac
 # A failed build/upload leaves a draft. Retrying replaces only that draft.
 goreleaser release --clean --release-notes CHANGELOG.md
 sh scripts/check-package.sh "$version"
-gh release edit "v$version" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+echo "Release v$version is built and verified as a draft. Native Windows verification must pass before it is published."

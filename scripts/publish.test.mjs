@@ -13,6 +13,7 @@ test("publication stops on failures, recovers drafts, and never replaces a publi
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   for (const name of ["tools", "scripts", "internal/version"]) mkdirSync(path.join(dir, name), { recursive: true });
   copyFileSync(path.join(root, "scripts/publish-release.sh"), path.join(dir, "scripts/publish-release.sh"));
+  copyFileSync(path.join(root, "scripts/finalize-release.sh"), path.join(dir, "scripts/finalize-release.sh"));
   writeFileSync(path.join(dir, "internal/version/VERSION"), "1.0.0\n");
   writeFileSync(path.join(dir, "CHANGELOG.md"), "# Synthetic release notes\n");
   writeFileSync(path.join(dir, ".gitignore"), "calls\n");
@@ -52,7 +53,7 @@ test("publication stops on failures, recovers drafts, and never replaces a publi
   for (const state of ["", "true"]) {
     const result = run({ TEST_RELEASE_STATE: state });
     assert.equal(result.status, 0, result.stderr);
-    assert.deepEqual(result.calls, ["gh api", "build", "check", "gh release"]);
+    assert.deepEqual(result.calls, ["gh api", "build", "check"]);
   }
   for (const [overrides, expected] of [
     [{ TEST_API_FAILURE: "1" }, ["gh api"]],
@@ -64,6 +65,23 @@ test("publication stops on failures, recovers drafts, and never replaces a publi
     assert.notEqual(result.status, 0);
     assert.deepEqual(result.calls, expected);
   }
+  const finalize = state => {
+    writeFileSync(env.TEST_CALLS, "");
+    const result = spawnSync("sh", ["scripts/finalize-release.sh", "1.0.0"], {
+      cwd: dir,
+      env: { ...env, TEST_RELEASE_STATE: state },
+      encoding: "utf8"
+    });
+    return { ...result, calls: readFileSync(env.TEST_CALLS, "utf8").trim().split("\n").filter(Boolean) };
+  };
+  const verifiedDraft = finalize("true");
+  assert.equal(verifiedDraft.status, 0, verifiedDraft.stderr);
+  assert.deepEqual(verifiedDraft.calls, ["gh api", "gh release"]);
+  const publicRelease = finalize("false");
+  assert.notEqual(publicRelease.status, 0);
+  assert.match(publicRelease.stderr, /verified draft/);
+  assert.deepEqual(publicRelease.calls, ["gh api"]);
+
   git("tag", "v1.0.1");
   const outdated = run({});
   assert.notEqual(outdated.status, 0);

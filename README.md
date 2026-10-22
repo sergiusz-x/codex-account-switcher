@@ -3,7 +3,7 @@
 A small terminal UI for switching saved ChatGPT sign-ins used by Codex CLI.
 Run `codex_switch` from any directory.
 
-**Supported target:** Ubuntu Linux `amd64`. Codex CLI `0.163.0` with file-based ChatGPT sign-in is required.
+**Supported targets:** Ubuntu Linux `amd64` and Windows 11 `x64`. Codex CLI `0.163.0` with file-based ChatGPT sign-in is required.
 
 Run `codex_switch --version` to see version and build information.
 
@@ -18,6 +18,21 @@ curl -fsSL https://raw.githubusercontent.com/sergiusz-x/codex-account-switcher/m
 
 The installer downloads the latest Linux `amd64` release and verifies its
 checksum before installation.
+
+On Windows 11 x64, download the PowerShell installer from the latest release
+and run it in Windows PowerShell 5.1 or PowerShell 7:
+
+```powershell
+$installer = Join-Path $env:TEMP 'codex-switch-install.ps1'
+Invoke-WebRequest 'https://github.com/sergiusz-x/codex-account-switcher/releases/latest/download/install.ps1' -OutFile $installer
+& $installer
+Remove-Item -LiteralPath $installer
+```
+
+The Windows installer verifies the release checksum before installing or
+updating `codex_switch.exe` in `%LOCALAPPDATA%\Programs\CodexSwitch\bin`.
+Add that directory to your per-user `PATH` if you want to run `codex_switch`
+from any terminal. It does not change `PATH` or install Codex CLI.
 
 ### Build from source
 
@@ -187,8 +202,10 @@ roll back to potentially stale credentials.
 
 File validation does not reproduce Codex's complete managed configuration or
 prove a token is still accepted remotely. Keyring, ephemeral login, API keys,
-and native Windows are currently unsupported. Concurrent Codex writes remain
-possible: the switcher lock is not respected by other applications.
+and architectures other than Windows x64 and Linux `amd64` are currently
+unsupported. On Windows, use a local NTFS installation directory. Concurrent
+Codex writes remain possible: the switcher lock is not respected by other
+applications.
 
 ## Contributing
 

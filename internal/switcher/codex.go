@@ -176,9 +176,11 @@ func (s *Store) changeAccountLocked(profileID string, restore, allowRestart bool
 }
 
 type codexClient struct {
-	home    string
-	timeout time.Duration
-	command func(context.Context, ...string) *exec.Cmd
+	home        string
+	binary      string
+	environment []string
+	timeout     time.Duration
+	command     func(context.Context, ...string) *exec.Cmd
 }
 
 type daemonStatus struct {
@@ -187,17 +189,32 @@ type daemonStatus struct {
 	SocketPath string `json:"socketPath"`
 }
 
-func (c codexClient) process(ctx context.Context, args ...string) *exec.Cmd {
+func (c codexClient) process(ctx context.Context, args ...string) (*exec.Cmd, error) {
 	var cmd *exec.Cmd
 	if c.command != nil {
 		cmd = c.command(ctx, args...)
+	} else if c.binary != "" {
+		var err error
+		cmd, err = newCodexCommandAt(ctx, c.binary, args...)
+		if err != nil {
+			return nil, err
+		}
 	} else {
-		cmd = exec.CommandContext(ctx, "codex", args...)
+		var err error
+		cmd, err = newCodexCommand(ctx, args...)
+		if err != nil {
+			return nil, err
+		}
 	}
-	cmd.Env = append(cmd.Environ(), "CODEX_HOME="+c.home)
+	env := cmd.Environ()
+	if c.environment != nil {
+		env = c.environment
+	}
+	cmd.Env = setEnvironmentValue(env, "CODEX_HOME", c.home)
+	cmd.Dir = c.home
 	cmd.WaitDelay = 500 * time.Millisecond
 	cmd.Stderr = io.Discard // Never include upstream output, which may contain secrets.
-	return cmd
+	return cmd, nil
 }
 
 func (c codexClient) deadline() (context.Context, context.CancelFunc) {
@@ -209,9 +226,19 @@ func (c codexClient) deadline() (context.Context, context.CancelFunc) {
 }
 
 func (c codexClient) lifecycle(action string) (daemonStatus, error) {
-	ctx, cancel := c.deadline()
+	timeout := c.timeout
+	if timeout == 0 {
+		timeout = 30 * time.Second
+		if action == "stop" {
+			timeout = 330 * time.Second
+		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	cmd := c.process(ctx, "app-server", "daemon", action)
+	cmd, err := c.process(ctx, "app-server", "daemon", action)
+	if err != nil {
+		return daemonStatus{}, errors.New("Codex CLI was not found or could not be started")
+	}
 	var output boundedOutput
 	cmd.Stdout = &output
 	if err := cmd.Run(); err != nil {
