@@ -51,16 +51,21 @@ func TestWindowsSecretACLsArePrivate(t *testing.T) {
 			t.Fatalf("read ACL for %s: %v", path, err)
 		}
 		sddl := descriptor.String()
-		wantUserACE := fmt.Sprintf("(A;%s;FA;;;%s)", inheritance, sid)
-		for _, want := range []string{"D:P", wantUserACE, "(A;" + inheritance + ";FA;;;SY)", "(A;" + inheritance + ";FA;;;BA)"} {
-			if !strings.Contains(sddl, want) {
-				t.Errorf("ACL for %s does not contain %q", path, want)
-			}
-		}
-		if strings.Count(sddl, "(A;") != 3 {
-			t.Errorf("ACL for %s grants access to unexpected principals: %s", path, sddl)
+		if want := expectedWindowsPrivateACL(t, sid, inheritance); sddl != want {
+			t.Errorf("ACL for %s = %s, want %s", path, sddl, want)
 		}
 	}
+}
+
+func expectedWindowsPrivateACL(t *testing.T, sid, inheritance string) string {
+	t.Helper()
+	// Let Windows canonicalize well-known SID aliases, including the local Administrator.
+	sddl := fmt.Sprintf("D:P(A;%s;FA;;;%s)(A;%s;FA;;;SY)(A;%s;FA;;;BA)", inheritance, sid, inheritance, inheritance)
+	descriptor, err := windows.SecurityDescriptorFromString(sddl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return descriptor.String()
 }
 
 func TestWindowsAdministrativeOwnerGetsPrivateACL(t *testing.T) {
@@ -87,8 +92,8 @@ func TestWindowsAdministrativeOwnerGetsPrivateACL(t *testing.T) {
 		t.Fatal(err)
 	}
 	sddl := descriptor.String()
-	if !strings.Contains(sddl, "D:P") || !strings.Contains(sddl, "(A;OICI;FA;;;"+user.User.Sid.String()+")") || strings.Count(sddl, "(A;") != 3 {
-		t.Fatalf("administrative owner did not receive a private ACL: %s", sddl)
+	if want := expectedWindowsPrivateACL(t, user.User.Sid.String(), "OICI"); sddl != want {
+		t.Fatalf("administrative owner ACL = %s, want %s", sddl, want)
 	}
 }
 
