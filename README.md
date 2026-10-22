@@ -9,16 +9,18 @@ Run `codex_switch --version` to see version and build information.
 
 ## Requirements and installation
 
-Once the repository is public and the first release is available, install or
-update with:
+Install or update the latest release with:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/sergiusz-x/codex-account-switcher/main/install.sh \
   | sh -s -- --repo sergiusz-x/codex-account-switcher
 ```
 
-Until then, build from source. The installer and update process are described
-in [Release process](docs/RELEASING.md).
+Anyone can use this command when the repository is public. For an
+access-restricted repository, use the authenticated GitHub CLI method in the
+[release process](docs/RELEASING.md).
+
+### Build from source
 
 Building requires Go 1.26 or later. Codex CLI must be available in `PATH`.
 Server integration targets Codex CLI `0.163.0` on Ubuntu with file-based
@@ -186,7 +188,7 @@ roll back to potentially stale credentials.
 
 File validation does not reproduce Codex's complete managed configuration or
 prove a token is still accepted remotely. Keyring, ephemeral login, API keys,
-and native Windows are unsupported in this MVP. Concurrent Codex writes remain
+and native Windows are currently unsupported. Concurrent Codex writes remain
 possible: the switcher lock is not respected by other applications.
 
 ## Contributing

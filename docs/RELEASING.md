@@ -29,7 +29,7 @@ tags; semantic-release owns both.
 
 ## Packages and installation
 
-The initial release target is Linux `amd64` with baseline x86-64 instructions
+Current packages target Linux `amd64` with baseline x86-64 instructions
 and no CGO requirement. Codex CLI `0.163.0` with file-based ChatGPT sign-in is
 the supported runtime. Other operating systems, architectures, or credential
 stores require implementation and separate validation before packaging.
@@ -41,17 +41,24 @@ installed binary. It installs or updates `codex_switch` in `~/.local/bin`; it do
 not install Codex CLI or edit shell configuration. Checksums detect accidental
 corruption but are not independent signatures.
 
-After the repository is public and the first release is available, users can
-install or update with:
+For a publicly readable repository, users install or update using the command
+in the README. It downloads the installer from `main`, which fetches the latest
+release and verifies its checksum before installation.
+
+For an access-restricted repository, users need an authenticated GitHub CLI.
+Download the installer asset from the latest release and run it with
+`--github-cli`; this installs the release without cloning the source repository:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/sergiusz-x/codex-account-switcher/main/install.sh \
-  | sh -s -- --repo sergiusz-x/codex-account-switcher
+install_dir=$(mktemp -d)
+trap 'rm -rf "$install_dir"' EXIT
+gh release download --repo sergiusz-x/codex-account-switcher --pattern install.sh --dir "$install_dir"
+sh "$install_dir/install.sh" --github-cli
 ```
 
-While the repository is private, downloading this script with `curl` is not
-available to users without repository access. Keep the source-build instructions
-available until the public release is ready.
+The release installer pins its own version, so download the latest release's
+installer again when updating. For public installations, use the command in the
+README; no GitHub login is needed.
 
 ## GitHub permissions and recovery
 
