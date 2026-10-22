@@ -51,7 +51,8 @@ func TestWindowsSecretACLsArePrivate(t *testing.T) {
 			t.Fatalf("read ACL for %s: %v", path, err)
 		}
 		sddl := descriptor.String()
-		if want := expectedWindowsPrivateACL(t, sid, inheritance); sddl != want {
+		// AUTO_INHERITED is informational when the DACL is protected.
+		if want := expectedWindowsPrivateACL(t, sid, inheritance); strings.Replace(sddl, "D:PAI", "D:P", 1) != want {
 			t.Errorf("ACL for %s = %s, want %s", path, sddl, want)
 		}
 	}
@@ -92,7 +93,7 @@ func TestWindowsAdministrativeOwnerGetsPrivateACL(t *testing.T) {
 		t.Fatal(err)
 	}
 	sddl := descriptor.String()
-	if want := expectedWindowsPrivateACL(t, user.User.Sid.String(), "OICI"); sddl != want {
+	if want := expectedWindowsPrivateACL(t, user.User.Sid.String(), "OICI"); strings.Replace(sddl, "D:PAI", "D:P", 1) != want {
 		t.Fatalf("administrative owner ACL = %s, want %s", sddl, want)
 	}
 }
