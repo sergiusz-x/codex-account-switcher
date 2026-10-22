@@ -19,9 +19,8 @@ import (
 	"time"
 )
 
-// Opt in explicitly: this starts only a temporary daemon with synthetic credentials.
-// All authentication and model endpoints point to an unused loopback port.
-func TestRealCodexAccountRoundTrip(t *testing.T) {
+func isolatedCodexBinary(t *testing.T) string {
+	t.Helper()
 	if os.Getenv("SWITCHER_REAL_CODEX") != "1" {
 		t.Skip("set SWITCHER_REAL_CODEX=1 to test the installed Codex in a temporary home")
 	}
@@ -33,6 +32,14 @@ func TestRealCodexAccountRoundTrip(t *testing.T) {
 		t.Fatalf("isolated Codex executable is unavailable: %v", err)
 	}
 	t.Setenv("PATH", filepath.Dir(binary)+string(os.PathListSeparator)+os.Getenv("PATH"))
+	return binary
+}
+
+// Opt in explicitly: this starts only a temporary daemon with synthetic credentials.
+// All authentication and model endpoints point to an unused loopback port.
+func TestRealCodexAccountRoundTrip(t *testing.T) {
+	binary := isolatedCodexBinary(t)
+	requireCodexDaemonSupport(t)
 	home, err := newSyntheticCodexHome(t)
 	if err != nil {
 		t.Fatal(err)
@@ -98,7 +105,10 @@ code_mode_host = false
 			t.Fatalf("real Codex round trip: verified=%v err=%v", result.ServerVerified, err)
 		}
 	}
-	if err := testRealCodexUsage(binary); err != nil {
+}
+
+func TestRealCodexUsage(t *testing.T) {
+	if err := testRealCodexUsage(isolatedCodexBinary(t)); err != nil {
 		t.Fatal("isolated Codex JSONL status test:", err)
 	}
 }

@@ -12,6 +12,13 @@ switcher against the pinned Codex npm launcher in a private synthetic home. The
 Linux package also receives temporary-directory install and update tests. Pull
 request previews expire after seven days.
 
+GitHub-hosted Windows runners are elevated. Codex rejects shared-daemon startup
+in that context, so these runners exercise real Codex status transport and skip
+the daemon round-trip test. Before publishing Windows support, run
+`SWITCHER_REAL_CODEX=1` with an absolute `SWITCHER_CODEX_BINARY` in a normal,
+non-elevated Windows terminal and run `go test ./internal/switcher -run '^TestRealCodex' -count=1 -v`.
+This uses only synthetic credentials and private temporary homes.
+
 After verification and packaging pass on `main`, semantic-release analyzes
 Conventional Commit messages. The first eligible release is `1.0.0`. It updates
 `CHANGELOG.md` and `internal/version/VERSION`, commits those files, and creates a
