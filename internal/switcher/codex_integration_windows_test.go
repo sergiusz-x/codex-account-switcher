@@ -62,7 +62,7 @@ func secureCodexIntegrationDir(path string) (retErr error) {
 		return err
 	}
 	handle, err := windows.CreateFile(name,
-		windows.READ_CONTROL|windows.WRITE_DAC|windows.FILE_READ_ATTRIBUTES,
+		windows.READ_CONTROL|windows.WRITE_DAC|windows.WRITE_OWNER|windows.FILE_READ_ATTRIBUTES,
 		windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE,
 		nil, windows.OPEN_EXISTING,
 		windows.FILE_FLAG_OPEN_REPARSE_POINT|windows.FILE_FLAG_BACKUP_SEMANTICS, 0)
@@ -70,7 +70,9 @@ func secureCodexIntegrationDir(path string) (retErr error) {
 		return err
 	}
 	defer func() { retErr = errors.Join(retErr, windows.CloseHandle(handle)) }()
+	// Codex requires its synthetic socket directories to be owned by the user,
+	// even when an elevated test process defaults to Administrators ownership.
 	return windows.SetSecurityInfo(handle, windows.SE_FILE_OBJECT,
-		windows.DACL_SECURITY_INFORMATION|windows.PROTECTED_DACL_SECURITY_INFORMATION,
-		nil, nil, dacl, nil)
+		windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION|windows.PROTECTED_DACL_SECURITY_INFORMATION,
+		current.User.Sid, nil, dacl, nil)
 }
