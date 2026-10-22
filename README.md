@@ -16,9 +16,8 @@ curl -fsSL https://raw.githubusercontent.com/sergiusz-x/codex-account-switcher/m
   | sh -s -- --repo sergiusz-x/codex-account-switcher
 ```
 
-Anyone can use this command when the repository is public. For an
-access-restricted repository, use the authenticated GitHub CLI method in the
-[release process](docs/RELEASING.md).
+The installer downloads the latest Linux `amd64` release and verifies its
+checksum before installation.
 
 ### Build from source
 
