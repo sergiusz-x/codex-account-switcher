@@ -4,7 +4,7 @@
 
 - Build a small, fast, stable TUI for switching local Codex CLI sign-ins.
 - Prioritize safe file operations, simple code, fast startup, and low resource use.
-- The supported release target is Linux `amd64`; see `docs/RELEASING.md`.
+- The supported release targets are Linux `amd64` and Windows 11 `amd64` on local NTFS; see `docs/RELEASING.md` for the tested limits.
 - The application includes read-only account status alongside the switcher.
 - Never use a developer's real Codex sign-in during development or tests. Use synthetic credentials and isolated temporary homes; maintainers perform any real-account acceptance checks.
 
@@ -25,7 +25,7 @@
 - Do not display real `auth.json` contents during diagnostics. Report only necessary structural information.
 - Use synthetic credentials and temporary directories for tests and experiments. Never use the real `~/.codex` in tests.
 - Preserve the complete original authentication file, including unknown fields. Parse only what validation and identity matching require.
-- On Ubuntu, write secrets with `0600` permissions and owned directories with `0700` permissions.
+- On Ubuntu, write secrets with `0600` permissions and owned directories with `0700` permissions. On Windows, protect switcher-owned credential files and directories with protected ACLs for the current owner, SYSTEM, and built-in Administrators; do not treat POSIX mode bits as Windows protection.
 - Before switching, preserve the current file and its refreshed tokens. Never choose the destination profile from a cached active marker alone.
 - Validate the target and prepare recovery data before replacing the active file.
 - Never use `codex logout` to switch accounts or implement custom OAuth refresh logic in the MVP.
@@ -63,5 +63,5 @@
 - CI runs semantic-release on `main` after verification and package checks. It updates `CHANGELOG.md` and `internal/version/VERSION`, commits them, and creates `vMAJOR.MINOR.PATCH`. Do not manually bump versions or create release tags during normal development.
 - The first automatic release is `1.0.0`. Between releases, keep the last release version in `VERSION`; source revision metadata distinguishes development builds.
 - Increment major for incompatible changes, minor for compatible features, and patch for compatible fixes.
-- GoReleaser packages only platforms that have working implementations and empirical validation. Currently publish Linux `amd64` for the Ubuntu MVP.
+- GoReleaser packages only platforms that have working implementations and empirical validation. The release workflow builds Linux `amd64` and Windows 11 `amd64`; Windows support requires the native package and installer gates to pass before publication.
 - See `docs/RELEASING.md` for the release workflow, supported targets, and release verification requirements.

@@ -26,3 +26,7 @@ mv -- "$license_work_dir/third_party_licenses" "$asset_dir/third_party_licenses"
     printf '#!/bin/sh\nCODEX_SWITCH_REPOSITORY=%s\nCODEX_SWITCH_VERSION=%s\n' "$repository" "$version"
     cat "$project_root/install.sh"
 } > "$asset_dir/install.sh"
+{
+    printf "\$script:DefaultRepository = '%s'\n\$script:DefaultVersion = '%s'\n" "$repository" "$version"
+    cat "$project_root/install.ps1"
+} > "$asset_dir/install.ps1"

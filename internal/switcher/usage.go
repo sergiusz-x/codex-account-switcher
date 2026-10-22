@@ -209,6 +209,10 @@ func (s *Store) usageProfiles() (profiles []usageProfile, retErr error) {
 }
 
 func readProfileUsage(parent context.Context, raw []byte) (usage usageResponse, retErr error) {
+	return readProfileUsageWithCodex(parent, raw, "", nil)
+}
+
+func readProfileUsageWithCodex(parent context.Context, raw []byte, binary string, config []byte) (usage usageResponse, retErr error) {
 	credentials, err := prepareUsageAuth(raw)
 	if err != nil {
 		return usage, err
@@ -223,20 +227,30 @@ func readProfileUsage(parent context.Context, raw []byte) (usage usageResponse, 
 			retErr = errors.Join(retErr, errors.New("could not remove private temporary status credentials"))
 		}
 	}()
-	if err := os.Chmod(home, 0o700); err != nil {
+	if err := secureDataDir(home); err != nil {
 		return usage, errors.New("cannot protect the temporary status home")
 	}
 	if err := atomicWrite(filepath.Join(home, "auth.json"), credentials, 0o600); err != nil {
 		return usage, errors.New("cannot prepare temporary Codex credentials")
 	}
-	config := []byte("cli_auth_credentials_store = \"file\"\ncheck_for_update_on_startup = false\n[analytics]\nenabled = false\n")
+	if config == nil {
+		config = []byte("cli_auth_credentials_store = \"file\"\ncheck_for_update_on_startup = false\n[analytics]\nenabled = false\n")
+	}
 	if err := atomicWrite(filepath.Join(home, "config.toml"), config, 0o600); err != nil {
 		return usage, errors.New("cannot configure the temporary status home")
 	}
 
 	ctx, cancel := context.WithTimeout(parent, usageTimeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "codex", "app-server", "--listen", "stdio://")
+	var cmd *exec.Cmd
+	if binary == "" {
+		cmd, err = newCodexCommand(ctx, "app-server", "--listen", "stdio://")
+	} else {
+		cmd, err = newCodexCommandAt(ctx, binary, "app-server", "--listen", "stdio://")
+	}
+	if err != nil {
+		return usage, errors.New("Codex CLI was not found or could not be started")
+	}
 	cmd.Dir = home
 	cmd.WaitDelay = 500 * time.Millisecond
 	cmd.Env = usageEnvironment(home)
@@ -392,19 +406,35 @@ func (c jsonLineClient) send(value any) error {
 }
 
 func usageEnvironment(home string) []string {
+	return filterUsageEnvironment(os.Environ(), home)
+}
+
+func filterUsageEnvironment(environment []string, home string) []string {
 	var env []string
-	for _, item := range os.Environ() {
+	for _, item := range environment {
 		key, _, ok := strings.Cut(item, "=")
 		if !ok {
 			continue
 		}
-		switch key {
-		case "CODEX_HOME", "OPENAI_API_KEY", "CODEX_API_KEY", "CODEX_ACCESS_TOKEN", "CODEX_INTERNAL_ORIGINATOR_OVERRIDE", "CODEX_REFRESH_TOKEN_URL_OVERRIDE", "OPENAI_BASE_URL", "CODEX_BASE_URL", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy":
+		if isSensitiveUsageEnvironmentKey(key) {
 			continue
 		}
 		env = append(env, item)
 	}
-	return append(env, "CODEX_HOME="+home)
+	return setEnvironmentValue(env, "CODEX_HOME", home)
+}
+
+func isSensitiveUsageEnvironmentKey(key string) bool {
+	for _, sensitive := range []string{
+		"CODEX_HOME", "OPENAI_API_KEY", "CODEX_API_KEY", "CODEX_ACCESS_TOKEN",
+		"CODEX_INTERNAL_ORIGINATOR_OVERRIDE", "CODEX_REFRESH_TOKEN_URL_OVERRIDE",
+		"OPENAI_BASE_URL", "CODEX_BASE_URL", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
+	} {
+		if environmentKeyEqual(key, sensitive) {
+			return true
+		}
+	}
+	return false
 }
 
 func authDisplayMetadata(raw []byte) (email, plan string) {

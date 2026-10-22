@@ -5,16 +5,22 @@
 GitHub Actions verifies pull requests and pushes to `main`. Verification runs Go
 formatting, vet and tests (including the race detector and an isolated Codex
 server test with synthetic credentials), release-tool tests, ShellCheck, and
-`actionlint`. A package job builds a Linux `amd64` preview, checks the archive,
-and tests installation and update in a temporary directory. Pull request previews
-expire after seven days.
+`actionlint`. A package job builds Linux `amd64` and Windows `amd64` previews
+and checks both archives. A Windows runner tests the packaged Windows executable
+and installer under Windows PowerShell 5.1 and PowerShell 7, then runs the
+switcher against the pinned Codex npm launcher in a private synthetic home. The
+Linux package also receives temporary-directory install and update tests. Pull
+request previews expire after seven days.
 
 After verification and packaging pass on `main`, semantic-release analyzes
 Conventional Commit messages. The first eligible release is `1.0.0`. It updates
 `CHANGELOG.md` and `internal/version/VERSION`, commits those files, and creates a
-`vMAJOR.MINOR.PATCH` tag. GoReleaser then builds the archive, installer, and
-SHA-256 checksums. The publishing script verifies the package before publishing
-the GitHub Release.
+`vMAJOR.MINOR.PATCH` tag. GoReleaser builds a draft containing both platform
+archives, installers, and SHA-256 checksums. Linux package verification runs
+before the draft is retained. A separate native Windows job downloads and tests
+the exact draft assets, then exercises the tagged source with Codex. A final job
+publishes the draft only after those Windows checks pass; a failed check leaves
+the release as a draft for recovery.
 
 | Commit type | Version change |
 | --- | --- |
@@ -29,16 +35,22 @@ tags; semantic-release owns both.
 
 ## Packages and installation
 
-Current packages target Linux `amd64` with baseline x86-64 instructions
-and no CGO requirement. Codex CLI `0.163.0` with file-based ChatGPT sign-in is
-the supported runtime. Other operating systems, architectures, or credential
-stores require implementation and separate validation before packaging.
+Packages target Linux `amd64` and Windows `amd64`, with baseline x86-64
+instructions and no CGO requirement. Windows support requires Windows 11 and a
+local NTFS destination. Windows PowerShell 5.1 and PowerShell 7 are covered by
+the installer acceptance tests. Codex CLI `0.163.0` with file-based ChatGPT
+sign-in is the supported runtime. Other operating systems, architectures, or
+credential stores require implementation and separate validation before
+packaging.
 
-A release contains a `.tar.gz` archive, `install.sh`, and `checksums.txt`. The
-archive includes the executable, project license, and Go dependency license
-texts. The installer verifies the checksum and executable before replacing the
-installed binary. It installs or updates `codex_switch` in `~/.local/bin`; it does
-not install Codex CLI or edit shell configuration. Checksums detect accidental
+A release contains Linux `.tar.gz` and Windows `.zip` archives, `install.sh`,
+`install.ps1`, and `checksums.txt`. The archives include the executable, project
+license, and Go dependency license texts. Both installers verify the checksum
+and executable before replacing the installed binary. The Windows installer
+uses `%LOCALAPPDATA%\Programs\CodexSwitch\bin`; add that directory to the
+per-user `PATH` to call `codex_switch` from any terminal. It requires Windows
+11 x64, PowerShell 5.1 or later, and local NTFS storage. Neither installer
+installs Codex CLI or edits shell configuration. Checksums detect accidental
 corruption but are not independent signatures.
 
 For a publicly readable repository, users install or update using the command
@@ -62,8 +74,8 @@ README; no GitHub login is needed.
 
 ## GitHub permissions and recovery
 
-Only the release job needs `contents: write`; other jobs use read-only
-permissions. The built-in `GITHUB_TOKEN` is sufficient when repository rules
+Only draft-build and finalization jobs need `contents: write`; verification
+jobs use read-only permissions. The built-in `GITHUB_TOKEN` is sufficient when repository rules
 allow the workflow to commit the release metadata and push tags. Actions are
 pinned to commit SHAs, and the Node.js release dependencies are locked. CI does
 not need Codex account credentials or other application secrets.
@@ -71,4 +83,6 @@ not need Codex account credentials or other application secrets.
 If a tag was created but publication failed, run the workflow manually with the
 existing `release_tag` (for example, `v1.0.0`). Recovery accepts only the newest
 version tag that belongs to `main`, reruns checks and packaging, and may replace
-a draft release. It refuses to replace a release that is already public.
+a draft release. The exact replacement draft must pass the native Windows gate
+before finalization. Recovery refuses to replace a release that is already
+public.

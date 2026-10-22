@@ -24,20 +24,31 @@ func NewLogin() (*Login, error) {
 	if err != nil {
 		return nil, errors.New("cannot prepare a private login directory")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	cmd := exec.CommandContext(ctx, "codex", "login", "--device-auth", "-c", `cli_auth_credentials_store="file"`)
-	cmd.Dir = home // Do not load a repository's project configuration.
-	for _, entry := range os.Environ() {
-		key, _, _ := strings.Cut(entry, "=")
-		switch key {
-		case "CODEX_HOME", "OPENAI_API_KEY", "CODEX_API_KEY", "CODEX_ACCESS_TOKEN":
-			continue
-		}
-		cmd.Env = append(cmd.Env, entry)
+	if err := secureDataDir(home); err != nil {
+		return nil, errors.Join(errors.New("cannot protect the private login directory"), err, os.RemoveAll(home))
 	}
-	cmd.Env = append(cmd.Env, "CODEX_HOME="+home)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	cmd, err := newCodexCommand(ctx, "login", "--device-auth", "-c", `cli_auth_credentials_store="file"`)
+	if err != nil {
+		cancel()
+		return nil, errors.Join(err, os.RemoveAll(home))
+	}
+	cmd.Dir = home // Do not load a repository's project configuration.
+	cmd.Env = loginEnvironment(os.Environ(), home)
 	cmd.WaitDelay = time.Second
 	return &Login{Command: cmd, home: home, cancel: cancel}, nil
+}
+
+func loginEnvironment(environment []string, home string) []string {
+	var env []string
+	for _, entry := range environment {
+		key, _, _ := strings.Cut(entry, "=")
+		if environmentKeyEqual(key, "CODEX_HOME") || environmentKeyEqual(key, "OPENAI_API_KEY") || environmentKeyEqual(key, "CODEX_API_KEY") || environmentKeyEqual(key, "CODEX_ACCESS_TOKEN") {
+			continue
+		}
+		env = append(env, entry)
+	}
+	return setEnvironmentValue(env, "CODEX_HOME", home)
 }
 
 // Complete imports only a successful, identity-checked login. An empty profileID

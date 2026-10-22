@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -521,6 +522,9 @@ func TestPermissionsAndSymlinkRejection(t *testing.T) {
 		store.statePath():                           0o600,
 		store.profilePath(profile.ID):               0o600,
 	} {
+		if runtime.GOOS == "windows" {
+			continue
+		}
 		info, err := os.Stat(path)
 		if err != nil {
 			t.Fatal(err)
@@ -532,6 +536,10 @@ func TestPermissionsAndSymlinkRejection(t *testing.T) {
 
 	linkPath := filepath.Join(t.TempDir(), "linked.json")
 	if err := os.Symlink(store.profilePath(profile.ID), linkPath); err != nil {
+		if runtime.GOOS == "windows" {
+			t.Logf("symlink test skipped because this Windows account cannot create symlinks: %v", err)
+			return
+		}
 		t.Fatal(err)
 	}
 	if _, _, err := readAuth(linkPath); err == nil {
