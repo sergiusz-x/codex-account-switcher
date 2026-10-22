@@ -25,7 +25,7 @@ and run it in Windows PowerShell 5.1 or PowerShell 7:
 ```powershell
 $installer = Join-Path $env:TEMP 'codex-switch-install.ps1'
 Invoke-WebRequest 'https://github.com/sergiusz-x/codex-account-switcher/releases/latest/download/install.ps1' -OutFile $installer
-& $installer
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $installer
 Remove-Item -LiteralPath $installer
 ```
 
