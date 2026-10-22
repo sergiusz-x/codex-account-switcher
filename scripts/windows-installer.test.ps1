@@ -179,3 +179,6 @@ try {
         Remove-Item -LiteralPath $root -Recurse -Force
     }
 }
+
+# Expected failing child processes must not become the harness exit code.
+exit 0
