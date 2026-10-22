@@ -1,0 +1,47 @@
+version: 2
+project_name: codex_switch
+
+before:
+  hooks:
+    - sh scripts/prepare-installer.sh
+
+builds:
+  - main: ./cmd/codex_switch
+    binary: codex_switch
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+    goamd64:
+      - v1
+    flags:
+      - -trimpath
+    # VERSION is embedded by Go. Do not inject another version with ldflags.
+    ldflags:
+      - -s -w
+
+archives:
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - CHANGELOG.md
+      - LICENSE
+      - release-assets/third_party_licenses/**/*
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+  extra_files:
+    - glob: release-assets/install.sh
+
+release:
+  draft: true
+  replace_existing_draft: true
+  extra_files:
+    - glob: release-assets/install.sh
+
+changelog:
+  disable: true

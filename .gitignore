@@ -1,0 +1,42 @@
+# Local environment data and credentials
+/.codex/
+/.agents/
+/.aws/
+.env
+.env.*
+!.env.example
+auth*.json
+auth*.json.*
+*.auth.json
+*.auth.json.*
+/profiles/
+/recovery/
+/state.json
+/switch.lock
+**/switcher/profiles/
+**/switcher/recovery/
+**/switcher/state.json
+**/switcher/switch.lock
+
+# Build outputs and local measurements
+/bin/
+/dist/
+/release-assets/
+/node_modules/
+/codex_switch
+/codex_switch.exe
+*.test
+*.exe
+coverage.out
+*.prof
+*.log
+
+# Editors and temporary files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.tmp
+.DS_Store
+Thumbs.db
