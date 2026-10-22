@@ -32,6 +32,7 @@ func TestRealCodexAccountRoundTrip(t *testing.T) {
 	if info, err := os.Stat(binary); err != nil || !info.Mode().IsRegular() {
 		t.Fatalf("isolated Codex executable is unavailable: %v", err)
 	}
+	t.Setenv("PATH", filepath.Dir(binary)+string(os.PathListSeparator)+os.Getenv("PATH"))
 	home, err := newSyntheticCodexHome(t)
 	if err != nil {
 		t.Fatal(err)
