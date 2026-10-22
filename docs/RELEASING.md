@@ -81,7 +81,8 @@ README; no GitHub login is needed.
 
 ## GitHub permissions and recovery
 
-Only draft-build and finalization jobs need `contents: write`; verification
+Draft-build, draft-asset verification, and finalization jobs need `contents: write`;
+GitHub does not expose draft release assets to read-only callers. Other verification
 jobs use read-only permissions. The built-in `GITHUB_TOKEN` is sufficient when repository rules
 allow the workflow to commit the release metadata and push tags. Actions are
 pinned to commit SHAs, and the Node.js release dependencies are locked. CI does
