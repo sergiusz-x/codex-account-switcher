@@ -94,6 +94,32 @@ function Invoke-VerifiedExecutable([string]$Path, [string]$ExpectedVersion) {
     return $reportedVersion
 }
 
+function Add-UserPathEntry([string]$Path) {
+    $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    $entries = @($userPath -split ';' | Where-Object { $_ })
+    $normalizedPath = [Environment]::ExpandEnvironmentVariables($Path).TrimEnd('\')
+    foreach ($entry in $entries) {
+        $normalizedEntry = [Environment]::ExpandEnvironmentVariables($entry.Trim().Trim('"')).TrimEnd('\')
+        if ($normalizedEntry -ieq $normalizedPath) { return $false }
+    }
+
+    if (-not ('CodexSwitchEnvironment' -as [type])) {
+        Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class CodexSwitchEnvironment {
+    [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+    public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint msg, UIntPtr wParam, string lParam, uint flags, uint timeout, out UIntPtr result);
+}
+'@
+    }
+    $updatedPath = if ($userPath) { "$userPath;$Path" } else { $Path }
+    [Environment]::SetEnvironmentVariable('Path', $updatedPath, 'User')
+    $result = [UIntPtr]::Zero
+    [void][CodexSwitchEnvironment]::SendMessageTimeout([IntPtr]0xffff, 0x001A, [UIntPtr]::Zero, 'Environment', 0x0002, 5000, [ref]$result)
+    return $true
+}
+
 try {
     $script:installStep = 'validating platform and arguments'
     if ($PSVersionTable.PSVersion -lt [Version]'5.1') { Stop-Install 'PowerShell 5.1 or later is required.' }
@@ -280,9 +306,14 @@ try {
     }
     Write-Output "Installed codex_switch $reportedVersion"
     Write-Output "Location: $destination"
-    $pathEntries = @($env:PATH -split [System.IO.Path]::PathSeparator)
-    if (-not ($pathEntries | Where-Object { $_.TrimEnd('\') -ieq $binDir.TrimEnd('\') })) {
-        Write-Output "Add this directory to your per-user PATH in Windows Environment Variables: $binDir"
+    try {
+        if (Add-UserPathEntry $binDir) {
+            Write-Output 'Added the install directory to your per-user PATH. Open a new terminal to run codex_switch.'
+        } else {
+            Write-Output 'The install directory is already in your per-user PATH. Open a new terminal if codex_switch is not recognized.'
+        }
+    } catch {
+        Write-Warning "The executable is installed, but the per-user PATH could not be updated. Add this directory manually: $binDir"
     }
 } catch {
     [Console]::Error.WriteLine("codex_switch installer failed during ${script:installStep}: $($_.Exception.Message)")

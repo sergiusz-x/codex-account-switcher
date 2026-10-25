@@ -54,10 +54,10 @@ A release contains Linux `.tar.gz` and Windows `.zip` archives, `install.sh`,
 `install.ps1`, and `checksums.txt`. The archives include the executable, project
 license, and Go dependency license texts. Both installers verify the checksum
 and executable before replacing the installed binary. The Windows installer
-uses `%LOCALAPPDATA%\Programs\CodexSwitch\bin`; add that directory to the
-per-user `PATH` to call `codex_switch` from any terminal. It requires Windows
-11 x64, PowerShell 5.1 or later, and local NTFS storage. Neither installer
-installs Codex CLI or edits shell configuration. Checksums detect accidental
+uses `%LOCALAPPDATA%\Programs\CodexSwitch\bin` and adds that directory to the
+per-user `PATH`; open a new terminal to call `codex_switch`. It requires Windows
+11 x64, PowerShell 5.1 or later, and local NTFS storage. It does not install
+Codex CLI or edit shell configuration. Checksums detect accidental
 corruption but are not independent signatures.
 
 For a publicly readable repository, users install or update using the command
