@@ -55,7 +55,7 @@ func (m *model) renderUsageDetail(width int) string {
 	}
 	rows = append(rows, "")
 	if result.ResetCountKnown {
-		rows = append(rows, lipgloss.NewStyle().Bold(true).Render(fmt.Sprintf("Available resets · %d", result.ResetCount)))
+		rows = append(rows, lipgloss.NewStyle().Bold(true).Render(fmt.Sprintf("Reset credits · %d", result.ResetCount)))
 		if !result.ResetDetailsKnown {
 			rows = append(rows, muted.Render("Reset details are unavailable."))
 		} else if len(result.Resets) == 0 {
@@ -82,7 +82,7 @@ func (m *model) renderUsageDetail(width int) string {
 			}
 		}
 	} else {
-		rows = append(rows, lipgloss.NewStyle().Bold(true).Render("Available resets"), muted.Render("Count unavailable."))
+		rows = append(rows, lipgloss.NewStyle().Bold(true).Render("Reset credits"), muted.Render("Count unavailable."))
 	}
 	if !result.UpdatedAt.IsZero() {
 		zone := time.Now().Format("MST -07:00")
@@ -143,7 +143,7 @@ func (m *model) renderDashboard(width, height int) string {
 		accountWidth := width - 66
 		header = lipgloss.JoinHorizontal(lipgloss.Top,
 			usageCell("Accounts", accountWidth), "  ",
-			usageCell("Remaining", 52), "  ", usageCell("Resets", 10))
+			usageCell("Remaining", 52), "  ", usageCell("Credits", 10))
 	}
 	rows := []string{lipgloss.NewStyle().Bold(true).Render(header), muted.Render(m.usageSummary(width)), ""}
 	blocks := make([]string, len(m.profiles))
@@ -216,9 +216,9 @@ func (m *model) renderAccountUsage(index int, profile switcher.Profile, width in
 			if len(result.Windows) == 0 {
 				rows = append(rows, muted.Render("  Quotas unavailable"))
 			}
-			resets := "Available resets: —"
+			resets := "Reset credits: —"
 			if result.ResetCountKnown {
-				resets = fmt.Sprintf("Available resets: %d", result.ResetCount)
+				resets = fmt.Sprintf("Reset credits: %d", result.ResetCount)
 				if expiry := usageResetExpiry(result, time.Now()); expiry != "" {
 					resets += " · " + expiry
 				}
@@ -306,7 +306,8 @@ func usageGauge(window switcher.UsageWindow) string {
 	}
 	bar := lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(strings.Repeat("━", filled)) +
 		lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render(strings.Repeat("─", 6-filled))
-	return fmt.Sprintf("%-4s %s %3d%%", usageWindowLabel(window.Duration), bar, remaining)
+	percentage := lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(fmt.Sprintf("%3d%%", remaining))
+	return fmt.Sprintf("%-4s %s %s", usageWindowLabel(window.Duration), bar, percentage)
 }
 
 func usageResetTime(window switcher.UsageWindow) string {
@@ -373,7 +374,7 @@ func (m *model) usageSummary(width int) string {
 		summary += fmt.Sprintf(" · %d unavailable", failed)
 	}
 	if resetAccounts > 0 {
-		summary += fmt.Sprintf(" · %d available resets", resets)
+		summary += fmt.Sprintf(" · %d reset credits", resets)
 		if resetAccounts < len(m.profiles) {
 			summary += fmt.Sprintf(" (%d/%d accounts)", resetAccounts, len(m.profiles))
 		}

@@ -187,6 +187,17 @@ jobs:
         with:
           version: v2.18.3
           install-only: true
+      - name: Configure the release deploy key
+        env:
+          RELEASE_DEPLOY_KEY: ${{ secrets.RELEASE_DEPLOY_KEY }}
+        run: |
+          install -d -m 700 "$RUNNER_TEMP/release-ssh"
+          printf '%s\n' "$RELEASE_DEPLOY_KEY" > "$RUNNER_TEMP/release-ssh/deploy_key"
+          chmod 600 "$RUNNER_TEMP/release-ssh/deploy_key"
+          printf '%s\n' 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' > "$RUNNER_TEMP/release-ssh/known_hosts"
+          chmod 644 "$RUNNER_TEMP/release-ssh/known_hosts"
+          git remote set-url origin "git@github.com:${GITHUB_REPOSITORY}.git"
+          git config --global core.sshCommand "ssh -i $RUNNER_TEMP/release-ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$RUNNER_TEMP/release-ssh/known_hosts"
       - name: Build or recover a draft release
         id: release
         env:

@@ -505,6 +505,16 @@ func planLabel(plan string) string {
 	if plan == "" || plan == "unknown" {
 		return ""
 	}
+	if strings.HasPrefix(plan, "chatgpt_") {
+		name := strings.TrimPrefix(plan, "chatgpt_")
+		words := strings.FieldsFunc(name, func(r rune) bool { return r == '_' || r == ' ' })
+		for i, word := range words {
+			if word != "" {
+				words[i] = strings.ToUpper(word[:1]) + word[1:]
+			}
+		}
+		return safeUsageText("ChatGPT "+strings.Join(words, " "), 80)
+	}
 	return safeUsageText(strings.ReplaceAll(plan, "_", " "), 80)
 }
 
