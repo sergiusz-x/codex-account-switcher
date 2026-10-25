@@ -21,7 +21,7 @@ test("publication stops on failures, recovers drafts, and never replaces a publi
   // failures at publication boundaries without contacting any external service.
   writeFileSync(path.join(dir, "scripts/check-package.sh"), '#!/bin/sh\nprintf "check\\n" >> "$TEST_CALLS"\n[ -z "${TEST_CHECK_FAILURE:-}" ]\n');
   const tools = {
-    gh: '#!/bin/sh\nprintf "gh %s\\n" "$1" >> "$TEST_CALLS"\nif [ "$1" = api ]; then\n  [ -z "${TEST_API_FAILURE:-}" ] || exit 1\n  case "$*" in\n    *--paginate*) [ "${TEST_RELEASE_STATE:-}" = true ] && printf "%s" "${TEST_RELEASE_ID:-423}" ;;\n    *) printf "%s" "${TEST_RELEASE_STATE:-}" ;;\n  esac\nfi\n',
+    gh: '#!/bin/sh\nprintf "gh %s\\n" "$1" >> "$TEST_CALLS"\nif [ "$1" = api ]; then\n  [ -z "${TEST_API_FAILURE:-}" ] || exit 1\n  case "$*" in\n    *--paginate*)\n      if [ "${TEST_FINALIZE:-}" = 1 ]; then\n        [ "${TEST_RELEASE_STATE:-}" = true ] && printf "%s" "${TEST_RELEASE_ID:-423}"\n      else\n        printf "%s" "${TEST_RELEASE_STATE:-}"\n      fi\n      exit 0 ;;\n    *) printf "%s" "${TEST_RELEASE_STATE:-}" ;;\n  esac\nfi\n',
     goreleaser: '#!/bin/sh\nprintf "build\\n" >> "$TEST_CALLS"\n[ -z "${TEST_BUILD_FAILURE:-}" ]\n'
   };
   for (const [name, body] of Object.entries(tools)) {
@@ -69,7 +69,7 @@ test("publication stops on failures, recovers drafts, and never replaces a publi
     writeFileSync(env.TEST_CALLS, "");
     const result = spawnSync("sh", ["scripts/finalize-release.sh", "1.0.0"], {
       cwd: dir,
-      env: { ...env, TEST_RELEASE_STATE: state },
+      env: { ...env, TEST_FINALIZE: "1", TEST_RELEASE_STATE: state },
       encoding: "utf8"
     });
     return { ...result, calls: readFileSync(env.TEST_CALLS, "utf8").trim().split("\n").filter(Boolean) };
@@ -80,7 +80,7 @@ test("publication stops on failures, recovers drafts, and never replaces a publi
   const publicRelease = finalize("false");
   assert.notEqual(publicRelease.status, 0);
   assert.match(publicRelease.stderr, /verified draft/);
-  assert.deepEqual(publicRelease.calls, ["gh api", "gh api"]);
+  assert.deepEqual(publicRelease.calls, ["gh api"]);
 
   git("tag", "v1.0.1");
   const outdated = run({});
