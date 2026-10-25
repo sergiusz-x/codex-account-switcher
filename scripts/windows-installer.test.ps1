@@ -52,6 +52,7 @@ for (const name of ['codex_switch_windows_amd64.zip', 'checksums.txt']) {
 [System.IO.File]::WriteAllText((Join-Path $tools 'gh.js'), $fakeGh)
 
 $originalPath = $env:PATH
+$originalUserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
 $originalRepo = $env:CODEX_SWITCH_REPOSITORY
 $originalVersion = $env:CODEX_SWITCH_VERSION
 $originalBinDir = $env:CODEX_SWITCH_BIN_DIR
@@ -78,6 +79,10 @@ try {
         if ($LASTEXITCODE -ne 0 -or ($reported -join "`n") -notmatch "^$([regex]::Escape($expectedVersion)) \(") {
             throw 'Installed Windows executable did not report the expected version.'
         }
+    }
+    $updatedUserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    if (-not (@($updatedUserPath -split ';') | Where-Object { $_.TrimEnd('\') -ieq $binDir.TrimEnd('\') })) {
+        throw 'Installer did not add the install directory to the per-user PATH.'
     }
     if ((Get-Content -LiteralPath (Join-Path $codexHome 'auth.json') -Raw) -cne '{"synthetic":"must remain unchanged"}' + "`n") {
         throw 'Installer changed the synthetic Codex credentials fixture.'
@@ -167,6 +172,7 @@ try {
 } finally {
     if ($previousErrorActionPreference) { $ErrorActionPreference = $previousErrorActionPreference }
     $env:PATH = $originalPath
+    [Environment]::SetEnvironmentVariable('Path', $originalUserPath, 'User')
     $env:CODEX_SWITCH_REPOSITORY = $originalRepo
     $env:CODEX_SWITCH_VERSION = $originalVersion
     $env:CODEX_SWITCH_BIN_DIR = $originalBinDir

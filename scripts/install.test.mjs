@@ -10,14 +10,14 @@ import test from "node:test";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const archiveName = "codex_switch_linux_amd64.tar.gz";
 
-function fixture(t) {
+function fixture(t, version = "1.0.0") {
   const dir = mkdtempSync(path.join(tmpdir(), "codex-switch-install-test-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   for (const name of ["tools", "assets", "payload", "destination with spaces", "codex-home"]) {
     mkdirSync(path.join(dir, name));
   }
   const binary = path.join(dir, "payload/codex_switch");
-  writeFileSync(binary, '#!/bin/sh\ncase "$1" in\n--version) echo "1.0.0 (test; linux/amd64)" ;;\n--help) echo "Usage: codex_switch" ;;\n*) exit 1 ;;\nesac\n');
+  writeFileSync(binary, `#!/bin/sh\ncase "$1" in\n--version) echo "${version} (test; linux/amd64)" ;;\n--help) echo "Usage: codex_switch" ;;\n*) exit 1 ;;\nesac\n`);
   chmodSync(binary, 0o755);
   execFileSync("tar", ["-czf", path.join(dir, "assets", archiveName), "-C", path.join(dir, "payload"), "codex_switch"]);
   const checksum = createHash("sha256").update(readFileSync(path.join(dir, "assets", archiveName))).digest("hex");
@@ -56,7 +56,7 @@ for (const name of ['${archiveName}', 'checksums.txt']) fs.copyFileSync(path.joi
     PATH: `${path.join(dir, "tools")}:${process.env.PATH}`,
     CODEX_HOME: path.join(dir, "codex-home"),
     CODEX_SWITCH_REPOSITORY: "example/switcher",
-    CODEX_SWITCH_VERSION: "1.0.0",
+    CODEX_SWITCH_VERSION: version,
     CODEX_SWITCH_BIN_DIR: path.dirname(destination),
     TEST_ASSETS: path.join(dir, "assets"),
     TEST_CALLS: path.join(dir, "calls")
@@ -108,7 +108,8 @@ test("private installations download with gh without passing tokens to curl", t 
 });
 
 test("generated release installer knows its repository and pinned version", t => {
-  const f = fixture(t);
+  const version = readFileSync(path.join(root, "internal/version/VERSION"), "utf8").trim();
+  const f = fixture(t, version);
   execFileSync("sh", [path.join(root, "scripts/prepare-installer.sh")], {
     cwd: f.dir,
     env: {
@@ -120,7 +121,7 @@ test("generated release installer knows its repository and pinned version", t =>
   const result = f.run([], { CODEX_SWITCH_REPOSITORY: "", CODEX_SWITCH_VERSION: "" }, path.join(f.dir, "release-assets/install.sh"));
   assert.equal(result.status, 0, result.stderr);
   const calls = readFileSync(f.env.TEST_CALLS, "utf8");
-  assert.match(calls, /example\/generated\/releases\/download\/v1\.0\.0\//);
+  assert.ok(calls.includes(`example/generated/releases/download/v${version}/`));
 });
 
 test("a failed download leaves the installed executable unchanged", t => {
