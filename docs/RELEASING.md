@@ -83,10 +83,12 @@ README; no GitHub login is needed.
 
 Draft-build, draft-asset verification, and finalization jobs need `contents: write`;
 GitHub does not expose draft release assets to read-only callers. Other verification
-jobs use read-only permissions. The built-in `GITHUB_TOKEN` is sufficient when repository rules
-allow the workflow to commit the release metadata and push tags. Actions are
-pinned to commit SHAs, and the Node.js release dependencies are locked. CI does
-not need Codex account credentials or other application secrets.
+jobs use read-only permissions. The release job uses the `RELEASE_DEPLOY_KEY`
+repository secret to push the version commit and tag through the narrow `main`
+update ruleset. The built-in `GITHUB_TOKEN` creates and verifies the draft assets.
+Rotate the deploy key and secret together. Actions are pinned to commit SHAs, and
+the Node.js release dependencies are locked. CI does not need Codex account
+credentials or other application secrets.
 
 If a tag was created but publication failed, run the workflow manually with the
 existing `release_tag` (for example, `v1.0.0`). Recovery accepts only the newest

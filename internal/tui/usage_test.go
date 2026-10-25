@@ -90,7 +90,7 @@ func TestDashboardShowsUsageAndSwitchTogetherAtDifferentSizes(t *testing.T) {
 			if lipgloss.Width(view) != size.width || lipgloss.Height(view) != size.height {
 				t.Fatalf("view exceeds terminal: %dx%d", lipgloss.Width(view), lipgloss.Height(view))
 			}
-			for _, text := range []string{"Account 0", "Account 1", "auth file", "person-0@example.invalid", "plus", "80%", "40%", "22 Oct 14:30", "3 available resets", "switch", "refresh", "more"} {
+			for _, text := range []string{"Account 0", "Account 1", "auth file", "person-0@example.invalid", "plus", "80%", "40%", "22 Oct 14:30", "3 reset credits", "switch", "refresh", "more"} {
 				if !strings.Contains(view, text) {
 					t.Errorf("dashboard missing %q", text)
 				}
@@ -123,7 +123,7 @@ func TestDashboardDoesNotTreatUnknownOrFailedReadsAsZero(t *testing.T) {
 	m.usageLoading = true
 	m.usageRead = map[string]bool{"account-0": true}
 	view := m.renderDashboard(116, 40)
-	for _, text := range []string{"2/4 accounts checked", "1 unavailable", "1 available resets (1/4 accounts)", "Loading", "Status unavailable", "Refreshing"} {
+	for _, text := range []string{"2/4 accounts checked", "1 unavailable", "1 reset credits (1/4 accounts)", "Loading", "Status unavailable", "Refreshing"} {
 		if !strings.Contains(view, text) {
 			t.Errorf("partial results missing %q", text)
 		}

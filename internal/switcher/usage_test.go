@@ -67,7 +67,7 @@ func TestAuthDisplayMetadataReadsOnlySyntheticClaims(t *testing.T) {
 		t.Fatal(err)
 	}
 	email, plan := authDisplayMetadata(raw)
-	if email != "person@example.invalid" || plan != "chatgpt pro" {
+	if email != "person@example.invalid" || plan != "ChatGPT Pro" {
 		t.Fatalf("got email %q and plan %q", email, plan)
 	}
 }

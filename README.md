@@ -4,12 +4,14 @@ Switch between saved ChatGPT accounts in Codex CLI.
 
 ## 👀 Preview
 
-Captured from the running CLI with synthetic accounts:
+Real CLI screens with synthetic account data.
 
 <p align="center">
-  <img src="docs/screenshots/dashboard.png" width="100%" alt="Codex Switch account list with synthetic usage data">
+  <strong>Accounts and usage</strong><br>
+  <img src="docs/screenshots/dashboard.png" width="100%" alt="Three accounts with remaining 5-hour and 7-day usage, reset times, and reset credits">
   <br><br>
-  <img src="docs/screenshots/more-options.png" width="100%" alt="Codex Switch account actions menu with synthetic profile data">
+  <strong>Account actions</strong><br>
+  <img src="docs/screenshots/more-options.png" width="100%" alt="Account menu with profile actions and usage details selected">
 </p>
 
 ## 📦 Install
@@ -62,8 +64,10 @@ Saved accounts contain credentials. Keep `%USERPROFILE%\.codex\switcher` on
 Windows or `~/.codex/switcher` on Linux private. Deleting a saved account does
 not sign Codex out or change its current login.
 
-Usage information is a snapshot and does not verify that a login is still valid.
-Set `CODEX_HOME` or use `--codex-home PATH` to use a different Codex home.
+Usage is a snapshot and does not verify that a login is still valid. Each quota
+window shows its own reset time in your local timezone. Reset credits are listed
+separately with their expiry. Set `CODEX_HOME` or use `--codex-home PATH` to use
+a different Codex home.
 
 ## 🛠️ Development
 
