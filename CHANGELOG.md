@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/sergiusz-x/codex-account-switcher/compare/v1.1.0...v1.1.1) (2026-10-25)
+
+### Bug Fixes
+
+* add Windows install directory to user PATH ([f6878b6](https://github.com/sergiusz-x/codex-account-switcher/commit/f6878b60889906bd6839c13704ae8a3c30d46ad4))
+* clarify usage reset credits and refresh CLI screenshots ([e5b9f9a](https://github.com/sergiusz-x/codex-account-switcher/commit/e5b9f9ada7f67c9d5d1863307ce214193140a654))
+
 ## [1.1.0](https://github.com/sergiusz-x/codex-account-switcher/compare/v1.0.0...v1.1.0) (2026-10-22)
 
 ### Features
