@@ -20,11 +20,10 @@ latest_tag=$(git tag --list --sort=-version:refname 'v[0-9]*' | head -n 1)
     exit 1
 }
 
-release_id=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate \
-    --jq ".[] | select(.tag_name == \"v$version\") | select(.draft) | .id")
-[ -n "$release_id" ] || {
+state=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+    --jq ".[] | select(.tag_name == \"v$version\") | .draft")
+[ "$state" = true ] || {
     echo 'Only a verified draft release can be published.' >&2
     exit 1
 }
-gh api "repos/$GITHUB_REPOSITORY/releases/$release_id" \
-    --method PATCH --field draft=false --field make_latest=true >/dev/null
+gh release edit "v$version" --repo "$GITHUB_REPOSITORY" --draft=false --latest
